@@ -1,24 +1,44 @@
-- hosts: 127.0.0.1
+- name: Get docker going
+  hosts: localhost
   connection: local
+  gather_facts: false
+  vars:
+    docker_host: "{{ lookup('env', 'DOCKER_HOST') }}"
   tasks:
-    - name: Build container
-      docker_image: 
-        path: "."
-        docker_url: "{{ lookup('env', 'DOCKER_HOST') }}"
-        name: ansible_base
-        state: build
 
-    - name: Run sshd for next step
-      docker:
-        name: ansible_target
-        image: ansible_base
-        docker_url: "{{ lookup('env', 'DOCKER_HOST') }}"
-        #ports: 0.0.0.0:49099:22
-        ports: 22
-        command: /usr/sbin/sshd -D
+  - name: Ensure ansible_base image is built
+    docker_image:
+      path: "."
+      docker_url: "{{docker_host}}"
+      name: ansible_base
+      state: present
 
-    - name: Containers dump
-      #debug: msg= "{{ inventory_hostname }} -> {{ item['HostConfig'] }}" 
-      #debug: msg={{ item['Name'] }}:{{ item['HostConfig']['PortBindings']['22/tcp'][0]['HostPort'] }}
-      debug: msg={{ item['Name'] }}
-      with_items: docker_containers
+  - name: Ensure sshd is running on ansbile_target (using ansible_base image)
+    docker:
+      name: ansible_target
+      image: ansible_base
+      docker_url: "{{docker_host}}"
+      publish_all_ports: true
+      command: /usr/sbin/sshd -D
+
+  - name: Add container to inventory so we can use it in the next play
+    add_host:
+      name: running_container
+      ansible_ssh_host: 192.168.59.103
+      ansible_ssh_user: root
+      ansible_ssh_port: "{{ docker_containers[0]['NetworkSettings']['Ports']['22/tcp'][0]['HostPort'] }}"
+      ansible_ssh_private_key_file: ansible_key
+
+
+- name: Make sure echobox is setup in the container
+  hosts: running_container
+  tasks:
+
+  - name: Install apt requirements
+    apt: name=python-pip state=present
+
+  - name: Install pip requirements
+    pip: name=Flask
+
+  - name: Copy code to dest
+    copy: src=echobox.py dest=/echobox.py

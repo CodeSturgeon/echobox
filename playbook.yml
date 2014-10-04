@@ -1,9 +1,0 @@
-- hosts: all
-  remote_user: root
-  tasks:
-  - name: Install apt requirements
-    apt: name=python-pip state=present
-  - name: Install pip requirements
-    pip: name=Flask
-  - name: Copy code to dest
-    copy: src=echobox.py dest=/echobox.py
