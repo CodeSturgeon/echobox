@@ -6,6 +6,22 @@
     docker_host: "{{ lookup('env', 'DOCKER_HOST') }}"
   tasks:
 
+  - name: Clean out ansible_base image
+    tags: clean
+    docker_image:
+      docker_url: "{{docker_host}}"
+      name: ansible_base
+      state: absent
+
+  - name: Clean out running container
+    tags: clean
+    docker:
+      name: ansible_target
+      docker_url: "{{docker_host}}"
+      state: absent
+      # Odd that this needs to be present when removing a container
+      image: ansible_base
+
   - name: Ensure ansible_base image is built
     docker_image:
       path: "."
@@ -47,6 +63,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  tags: image
   tasks:
 
   # There is no ansible module to do this ?!?!?!
