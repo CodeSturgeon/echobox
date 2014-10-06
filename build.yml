@@ -41,4 +41,14 @@
     pip: name=Flask
 
   - name: Copy code to dest
-    copy: src=echobox.py dest=/echobox.py
+    copy: src=echobox.py dest=/echobox.py mode=0777
+
+- name: Make the final image and run it
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+
+  # There is no ansible module to do this ?!?!?!
+  - name: Make image
+    command: docker commit ansible_target ansible_final
